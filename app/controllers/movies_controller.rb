@@ -11,23 +11,32 @@ class MoviesController < ApplicationController
   end
 
   def index
+
     @all_ratings = Movie.uniq.order(:rating).pluck(:rating)
     
     if params[:ratings]
-      # user has given a selection
       session[:ratings] = params[:ratings]
-      # using _ as placeholder for a value that you don't care about
-      # stores and returns transformed hash to array
-      @ratings = params[:ratings].inject([]) { |memo, (key,_)| memo << key }
+      @ratings = params[:ratings].is_a?(Hash) ? params[:ratings].keys : params[:ratings]
     elsif session[:ratings]
-    # if remember some ratings, redirect to movies index page with previous selection, and then stop, don't do anything further
-    # if you specified an order, we will add that sorting as well
+      flash.keep
       redirect_to movies_path(ratings: session[:ratings], order: params[:order]) and return
     else
       @ratings = @all_ratings
+      session[:ratings] = @all_ratings
     end
     
-    @movies = Movie.order(params[:order]).where('rating in (?)', @ratings)
+    if params[:order]
+      session[:order] = params[:order]
+      @order = params[:order]
+    elsif session[:order]
+      flash.keep
+      redirect_to movies_path(order: session[:order], ratings: params[:ratings]) and return
+    else
+      @order = "title"
+      session[:order] = @order
+    end
+    
+    @movies = Movie.order(@order).where('rating in (?)', @ratings)
   end
 
   def new
